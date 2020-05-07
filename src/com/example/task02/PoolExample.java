@@ -1,11 +1,22 @@
 package com.example.task02;
 
 import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.RejectedExecutionHandler;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class PoolExample {
+
+    private static class CallerRunsPolicy implements RejectedExecutionHandler {
+
+        public void rejectedExecution(Runnable r, ThreadPoolExecutor e) {
+            if (!e.isShutdown()) {
+                System.out.println("job restart");
+                r.run();
+            }
+        }
+    }
 
     public static void main(String[] args) throws InterruptedException {
 
@@ -15,6 +26,8 @@ public class PoolExample {
                 // не изменяйте эти параметры
                 3, 3, 1, TimeUnit.SECONDS, new LinkedBlockingQueue<>(3));
 
+        executor.setRejectedExecutionHandler(new CallerRunsPolicy());
+
         // сколько задач выполнилось
         AtomicInteger count = new AtomicInteger(0);
 
@@ -22,13 +35,12 @@ public class PoolExample {
         AtomicInteger inProgress = new AtomicInteger(0);
 
         // отправляем задачи на выполнение
-        for (int j = 0; j < 10; j++) {
-            for (int i = 0; i < 3; i++) {
-                final int number = (i + 1) * (j + 1);
+            for (int i = 0; i < 30; i++) {
+                final int number = i;
                 Thread.sleep(10);
 
                 System.out.println("creating #" + number);
-                if (inProgress.intValue() < 3) executor.submit(() -> {
+                executor.submit(() -> {
                     int working = inProgress.incrementAndGet();
                     System.out.println("start #" + number + ", in progress: " + working);
                     try {
@@ -42,8 +54,8 @@ public class PoolExample {
                     return null;
                 });
             }
-            Thread.sleep(3000);
-        }
+           // Thread.sleep(3000);
+        //}
         executor.shutdown();
     }
 }
